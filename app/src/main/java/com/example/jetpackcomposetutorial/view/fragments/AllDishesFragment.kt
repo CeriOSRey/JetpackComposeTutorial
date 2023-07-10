@@ -8,28 +8,46 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.GridLayoutManager
 import com.example.jetpackcomposetutorial.R
+import com.example.jetpackcomposetutorial.application.FavDishApplication
 import com.example.jetpackcomposetutorial.databinding.FragmentAllDishesBinding
 import com.example.jetpackcomposetutorial.view.activities.AddUpdateDishActivity
-import com.example.jetpackcomposetutorial.view.activities.MainActivity
-import com.example.jetpackcomposetutorial.viewmodel.HomeViewModel
+import com.example.jetpackcomposetutorial.view.adapters.FavDishAdapter
+import com.example.jetpackcomposetutorial.viewmodel.FavDishViewModel
+import com.example.jetpackcomposetutorial.viewmodel.FavDishViewModelFactory
 
 class AllDishesFragment : Fragment() {
 
-    private var _binding: FragmentAllDishesBinding? = null
-
-    // This property is only valid between onCreateView and
-    // onDestroyView.
-    private val binding get() = _binding!!
-
+    private lateinit var mBinding: FragmentAllDishesBinding
+    private val mFavDishViewModel: FavDishViewModel by viewModels {
+        FavDishViewModelFactory((requireActivity().application as FavDishApplication).repository)
+    }
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        mBinding.rvDishesList.layoutManager = GridLayoutManager(requireActivity(), 2)
+        val favDishAdapter = FavDishAdapter(this@AllDishesFragment)
+        mBinding.rvDishesList.adapter = favDishAdapter
+
+        mFavDishViewModel.allDishesList.observe(viewLifecycleOwner) {
+            dishes ->
+            dishes.let {
+                if (it.isNotEmpty()) {
+                    mBinding.rvDishesList.visibility = View.VISIBLE
+                    mBinding.tvNoDishesAddedYet.visibility = View.GONE
+                    favDishAdapter.dishesList(it)
+                } else {
+                    mBinding.rvDishesList.visibility = View.GONE
+                    mBinding.tvNoDishesAddedYet.visibility = View.VISIBLE
+                }
+            }
+        }
     }
 
     override fun onCreateView(
@@ -37,33 +55,16 @@ class AllDishesFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val homeViewModel =
-            ViewModelProvider(this).get(HomeViewModel::class.java)
-
-        _binding = FragmentAllDishesBinding.inflate(inflater, container, false)
-        val root: View = binding.root
-
-        val textView: TextView = binding.textHome
-        homeViewModel.text.observe(viewLifecycleOwner) {
-            textView.text = it
-        }
+        mBinding = FragmentAllDishesBinding.inflate(inflater, container, false)
         setupMenu()
-        return root
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
+        return mBinding.root
     }
 
     private fun setupMenu() {
         (requireActivity() as MenuHost).addMenuProvider(object: MenuProvider {
-            override fun onPrepareMenu(menu: Menu) {
-                super.onPrepareMenu(menu)
-            }
-
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
                 menuInflater.inflate(R.menu.menu_all_dishes, menu)
+
             }
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
